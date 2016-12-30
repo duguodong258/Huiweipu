@@ -26,4 +26,12 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:25.0.1'
     testCompile 'junit:junit:4.12'
+
+    //弹幕自定义view
+    compile 'com.github.ctiao:DanmakuFlameMaster:0.6.2'
+    compile 'com.github.ctiao:ndkbitmap-armv7a:0.6.2'
+
+    /*Other ABIs: optional*/
+    compile 'com.github.ctiao:ndkbitmap-armv5:0.6.2'
+    compile 'com.github.ctiao:ndkbitmap-x86:0.6.2'
 }

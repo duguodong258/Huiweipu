@@ -1,6 +1,7 @@
 package com.hwp.huiweipu;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -9,8 +10,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.MediaController;
@@ -21,6 +20,16 @@ import android.widget.VideoView;
 import com.hwp.huiweipu.utils.FileUtil;
 
 import java.util.ArrayList;
+import java.util.Random;
+
+import master.flame.danmaku.controller.DrawHandler;
+import master.flame.danmaku.danmaku.model.BaseDanmaku;
+import master.flame.danmaku.danmaku.model.DanmakuTimer;
+import master.flame.danmaku.danmaku.model.IDanmakus;
+import master.flame.danmaku.danmaku.model.android.DanmakuContext;
+import master.flame.danmaku.danmaku.model.android.Danmakus;
+import master.flame.danmaku.danmaku.parser.BaseDanmakuParser;
+import master.flame.danmaku.ui.widget.DanmakuView;
 
 import static com.hwp.huiweipu.R.id.video_view;
 
@@ -33,6 +42,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ProgressBar progressBar;
     private int viewtype = 2;//1.全屏 2.窗口
     private int intPositionWhenPause;//记录播放位置
+    private boolean showDanmaku;
+    private DanmakuView mDanmakuView;
+    private DanmakuContext mDanmakuContext;
+
+    private BaseDanmakuParser parser = new BaseDanmakuParser() {
+        @Override
+        protected IDanmakus parse() {
+            return new Danmakus();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +66,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void initView() {
         findViewById(R.id.btn_send).setOnClickListener(this);
         editText = (EditText) findViewById(R.id.et_content);
+        mDanmakuView = (DanmakuView) findViewById(R.id.danmaku_view);
+        mDanmakuView.enableDanmakuDrawingCache(true);
+        mDanmakuView.setCallback(new DrawHandler.Callback() {
+            @Override
+            public void prepared() {
+                showDanmaku = true;
+                mDanmakuView.start();
+                generateSomeDanmaku();
+            }
+
+            @Override
+            public void updateTimer(DanmakuTimer timer) {
+
+            }
+
+            @Override
+            public void danmakuShown(BaseDanmaku danmaku) {
+
+            }
+
+            @Override
+            public void drawingFinished() {
+
+            }
+        });
+
+        mDanmakuContext = DanmakuContext.create();
+        mDanmakuView.prepare(parser, mDanmakuContext);
+        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener (new View.OnSystemUiVisibilityChangeListener() {
+            @Override
+            public void onSystemUiVisibilityChange(int visibility) {
+                if (visibility == View.SYSTEM_UI_FLAG_VISIBLE) {
+                    onWindowFocusChanged(true);
+                }
+            }
+        });
+
+
     }
 
     private void initVideoView() {
@@ -78,10 +135,60 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         String content = editText.getText().toString();
         if(!TextUtils.isEmpty(content)){
-            Animation animation = AnimationUtils.loadAnimation(mContext, R.anim.slide_in_out);
-            animation.setFillAfter(true);//停留在结束位置
-            animation.setDuration(5000);
+            addDanmaku(content, true);
+            editText.setText("");
         }
+    }
+
+
+    /**
+     * 向弹幕View中添加一条弹幕
+     * @param content
+     *          弹幕的具体内容
+     * @param  withBorder
+     *          弹幕是否有边框
+     */
+    private void addDanmaku(String content, boolean withBorder) {
+        BaseDanmaku danmaku = mDanmakuContext.mDanmakuFactory.createDanmaku(BaseDanmaku.TYPE_SCROLL_RL);
+        danmaku.text = content;
+        danmaku.padding = 5;
+        danmaku.textSize = sp2px(20);
+        danmaku.textColor = Color.WHITE;
+        danmaku.setTime(mDanmakuView.getCurrentTime());
+        if (withBorder) {
+            danmaku.borderColor = Color.GREEN;
+        }
+        mDanmakuView.addDanmaku(danmaku);
+    }
+
+
+    /**
+     * 随机生成一些弹幕内容以供测试
+     */
+    private void generateSomeDanmaku() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(showDanmaku) {
+                    int time = new Random().nextInt(300);
+                    String content = "弹幕" + time;
+                    addDanmaku(content, false);
+                    try {
+                        Thread.sleep(time);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * sp转px的方法。
+     */
+    public int sp2px(float spValue) {
+        final float fontScale = getResources().getDisplayMetrics().scaledDensity;
+        return (int) (spValue * fontScale + 0.5f);
     }
 
 
